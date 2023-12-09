@@ -1,0 +1,8 @@
+# CPython
+__pycache__/
+
+# Hydra outputs
+outputs/
+
+# VS Code
+.vscode
