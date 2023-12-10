@@ -1,6 +1,7 @@
 import pathlib
 from attr import define
 import torch
+import torchtext
 from torchtext.datasets import IMDB
 from torchtext.data.utils import get_tokenizer
 from torchtext.vocab import build_vocab_from_iterator
@@ -14,9 +15,15 @@ class Params:
     train_to_val_ratio: float
 
 
-def create_dataloaders(
-    imdb_path: pathlib, device: torch.device, params: Params
-) -> tuple[DataLoader, DataLoader, DataLoader]:
+@define
+class DatasetAndLoaders:
+    train_loader: DataLoader
+    validation_loader: DataLoader
+    test_loader: DataLoader
+    vocab: torchtext.vocab.Vocab
+
+
+def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoaders:
     """Return train, validation, and test dataloaders."""
     tokenizer = get_tokenizer("basic_english")
 
@@ -69,4 +76,6 @@ def create_dataloaders(
         shuffle=True,
         collate_fn=collate_batch,
     )
-    return train_loader, valid_loader, test_loader
+    return DatasetAndLoaders(
+        train_loader=train_loader, validation_loader=valid_loader, test_loader=test_loader, vocab=vocab
+    )

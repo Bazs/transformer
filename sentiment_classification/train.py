@@ -33,7 +33,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _logger.info("Using device: %s", device)
 
-    create_dataloaders(config.imdb_path, device=device, params=config.dataset_params)
+    train_loader, validation_loader, test_loader = create_dataloaders(
+        config.imdb_path, device=device, params=config.dataset_params
+    )
 
 
 if __name__ == "__main__":
