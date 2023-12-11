@@ -1,13 +1,13 @@
 import copy
 import math
 from attr import define
+import cattr
 import torch
 import torch.nn as nn
 
 
 @define
 class TransformerParams:
-    vocab_size: int
     emb_dim: int
     n_heads: int
     hid_dim: int
@@ -20,10 +20,14 @@ class TransformerParams:
 class TransformerForClassification(nn.Module):
     def __init__(
         self,
-        params: TransformerParams,
+        vocab_size: int,
+        params: dict | TransformerParams,
     ):
         super().__init__()
-        self.embedding = nn.Embedding(params.vocab_size, params.emb_dim)
+        if isinstance(params, dict):
+            params = cattr.structure(params, TransformerParams)
+
+        self.embedding = nn.Embedding(vocab_size, params.emb_dim)
         self.pos_encoder = PositionalEncoding(params.emb_dim, params.dropout, params.max_seq_length)
         encoder_layer = TransformerEncoderLayer(params.emb_dim, params.n_heads, params.hid_dim, params.dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layer, params.n_layers)

@@ -18,6 +18,7 @@ _logger = logging.getLogger(Path(__file__).stem)
 class Config:
     imdb_path: Path
     dataset_params: DatasetParams
+    model: dict
 
 
 @hydra.main(config_path="config", config_name="train_config")
@@ -33,9 +34,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _logger.info("Using device: %s", device)
 
-    train_loader, validation_loader, test_loader = create_dataloaders(
-        config.imdb_path, device=device, params=config.dataset_params
-    )
+    dataset_and_loaders = create_dataloaders(device=device, params=config.dataset_params)
+
+    model = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab)).to(device)
 
 
 if __name__ == "__main__":
