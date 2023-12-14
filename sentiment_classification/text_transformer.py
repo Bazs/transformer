@@ -113,6 +113,9 @@ class MultiHeadAttention(nn.Module):
 
         # If mask is provided, mask out the attention scores.
         if mask is not None:
+            # Reshape mask: [batch_size, 1, 1, seq_len]
+            # The '1's are for broadcasting over the n_heads and seq_len dimensions of energy
+            mask = mask.unsqueeze(1).unsqueeze(2)
             energy = energy.masked_fill(mask == 0, float("-1e20"))
 
         # Apply softmax to the final dimension (seq_len) to get attention scores

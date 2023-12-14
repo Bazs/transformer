@@ -13,8 +13,8 @@ def test_forward():
     datasets = create_dataloaders(device=device, params=params)
 
     model = TransformerForClassification(
+        vocab_size=len(datasets.vocab),
         params=TransformerParams(
-            vocab_size=len(datasets.vocab),
             emb_dim=32,
             n_heads=2,
             hid_dim=64,
@@ -22,14 +22,10 @@ def test_forward():
             output_dim=2,
             dropout=0.1,
             max_seq_length=100,
-        )
+        ),
     )
 
-    for labels, texts, lengths in datasets.train_loader:
-        assert labels.shape == (batch_size,)
-        assert texts.shape[0] == batch_size
-        assert lengths.shape == (batch_size,)
-
-        logits = model(texts, mask=None)
+    for texts, masks, labels in datasets.train_loader:
+        logits = model(texts, mask=masks)
         assert logits.shape == (batch_size, 2)
         break

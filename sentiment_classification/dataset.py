@@ -39,16 +39,16 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
     label_pipeline = lambda x: 1 if x == "pos" else 0
 
     def collate_batch(batch):
-        label_list, text_list, lengths = [], [], []
+        label_list, text_list, masks = [], [], []
         for _label, _text in batch:
             label_list.append(label_pipeline(_label))
             processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
             text_list.append(processed_text)
-            lengths.append(processed_text.size(0))
+            masks.append(torch.ones(len(processed_text), dtype=torch.int64))
         label_list = torch.tensor(label_list, dtype=torch.int64)
-        lengths = torch.tensor(lengths, dtype=torch.int64)
         text_list = torch.nn.utils.rnn.pad_sequence(text_list, batch_first=True)
-        return label_list.to(device), text_list.to(device), lengths.to(device)
+        masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True, padding_value=0)
+        return text_list.to(device), masks.to(device), label_list.to(device)
 
     train_iter, test_iter = IMDB()
     train_dataset = list(train_iter)

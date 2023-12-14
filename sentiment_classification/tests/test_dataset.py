@@ -11,7 +11,7 @@ def test_create_dataloaders():
 
     datasets = create_dataloaders(device=device, params=params)
 
-    for labels, texts, lengths in datasets.train_loader:
+    for texts, masks, labels in datasets.train_loader:
         assert labels.shape == (batch_size,)
         assert texts.shape[0] == batch_size
-        assert lengths.shape == (batch_size,)
+        assert masks.shape[0] == batch_size
