@@ -46,9 +46,18 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     for epoch in range(config.num_epochs):
         train_loss = train_epoch(
-            model, data_loader=dataset_and_loaders.train_loader, optimizer=optimizer, criterion=criterion
+            model,
+            data_loader=dataset_and_loaders.train_loader,
+            num_batches=dataset_and_loaders.num_train_batches,
+            optimizer=optimizer,
+            criterion=criterion,
         )
-        valid_loss = evaluate_epoch(model, data_loader=dataset_and_loaders.validation_loader, criterion=criterion)
+        valid_loss = evaluate_epoch(
+            model,
+            data_loader=dataset_and_loaders.test_loader,
+            num_batches=dataset_and_loaders.num_test_batches,
+            criterion=criterion,
+        )
 
         print(f"Epoch: {epoch+1}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}")
 
@@ -56,6 +65,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
 def train_epoch(
     model: nn.Module,
     data_loader: torch.utils.data.DataLoader,
+    num_batches: int,
     optimizer: optim.Optimizer,
     criterion: nn.Module,
 ) -> float:
@@ -64,7 +74,7 @@ def train_epoch(
 
     epoch_loss = 0
 
-    for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Training batch", total=len(data_loader)):
+    for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Training batch", total=num_batches):
         optimizer.zero_grad()  # Clear the gradients
 
         # Forward pass: Compute predictions and loss
@@ -80,12 +90,14 @@ def train_epoch(
     return epoch_loss / len(data_loader)
 
 
-def evaluate_epoch(model: nn.Module, data_loader: torch.utils.data.DataLoader, criterion: nn.Module) -> float:
+def evaluate_epoch(
+    model: nn.Module, data_loader: torch.utils.data.DataLoader, num_batches: int, criterion: nn.Module
+) -> float:
     model.eval()  # Set the model to evaluation mode
     epoch_loss = 0
 
     with torch.no_grad():
-        for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Validating batch", total=len(data_loader)):
+        for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Validating batch", total=num_batches):
             predictions = model(text_batch, mask=masks_batch).squeeze(1)
             loss = criterion(predictions, label_batch)
 

@@ -9,6 +9,9 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
 
 
+IMDB_DATASET_LEN = 25000
+
+
 @define
 class Params:
     batch_size: int
@@ -18,8 +21,9 @@ class Params:
 @define
 class DatasetAndLoaders:
     train_loader: DataLoader
-    validation_loader: DataLoader
+    num_train_batches: int
     test_loader: DataLoader
+    num_test_batches: int
     vocab: torchtext.vocab.Vocab
 
 
@@ -51,31 +55,21 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
         return text_list.to(device), masks.to(device), label_list.to(device)
 
     train_iter, test_iter = IMDB()
-    train_dataset = list(train_iter)
-    test_dataset = list(test_iter)
-
-    train_len = int(len(train_dataset) * params.train_to_val_ratio)
-    valid_len = len(train_dataset) - train_len
-    train_dataset, valid_dataset = random_split(train_dataset, [train_len, valid_len])
 
     train_loader = DataLoader(
-        train_dataset,
+        train_iter,
         batch_size=params.batch_size,
-        shuffle=True,
-        collate_fn=collate_batch,
-    )
-    valid_loader = DataLoader(
-        valid_dataset,
-        batch_size=params.batch_size,
-        shuffle=True,
         collate_fn=collate_batch,
     )
     test_loader = DataLoader(
-        test_dataset,
+        test_iter,
         batch_size=params.batch_size,
-        shuffle=True,
         collate_fn=collate_batch,
     )
     return DatasetAndLoaders(
-        train_loader=train_loader, validation_loader=valid_loader, test_loader=test_loader, vocab=vocab
+        train_loader=train_loader,
+        num_train_batches=IMDB_DATASET_LEN // params.batch_size,
+        test_loader=test_loader,
+        num_test_batches=IMDB_DATASET_LEN // params.batch_size,
+        vocab=vocab,
     )
