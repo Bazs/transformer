@@ -1,13 +1,13 @@
 import pathlib
-from attr import define
+
 import torch
 import torchtext
-from torchtext.datasets import IMDB
-from torchtext.data.utils import get_tokenizer
-from torchtext.vocab import build_vocab_from_iterator
+from attr import define
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import random_split
-
+from torchtext.data.utils import get_tokenizer
+from torchtext.datasets import IMDB
+from torchtext.vocab import build_vocab_from_iterator
 
 IMDB_DATASET_LEN = 25000
 
@@ -51,7 +51,9 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
             masks.append(torch.ones(len(processed_text), dtype=torch.int64))
         label_list = torch.tensor(label_list, dtype=torch.int64)
         text_list = torch.nn.utils.rnn.pad_sequence(text_list, batch_first=True)
-        masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True, padding_value=0)
+        masks = torch.nn.utils.rnn.pad_sequence(
+            masks, batch_first=True, padding_value=0
+        )
         return text_list.to(device), masks.to(device), label_list.to(device)
 
     train_iter, test_iter = IMDB()

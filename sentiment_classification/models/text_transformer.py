@@ -1,9 +1,10 @@
 import copy
 import math
-from attr import define
+
 import cattr
 import torch
 import torch.nn as nn
+from attr import define
 
 
 @define
@@ -28,13 +29,19 @@ class TransformerForClassification(nn.Module):
             params = cattr.structure(params, TransformerParams)
 
         self.embedding = nn.Embedding(vocab_size, params.emb_dim)
-        self.pos_encoder = PositionalEncoding(params.emb_dim, params.dropout, params.max_seq_length)
-        encoder_layer = TransformerEncoderLayer(params.emb_dim, params.n_heads, params.hid_dim, params.dropout)
+        self.pos_encoder = PositionalEncoding(
+            params.emb_dim, params.dropout, params.max_seq_length
+        )
+        encoder_layer = TransformerEncoderLayer(
+            params.emb_dim, params.n_heads, params.hid_dim, params.dropout
+        )
         self.transformer_encoder = TransformerEncoder(encoder_layer, params.n_layers)
         self.fc_out = nn.Linear(params.emb_dim, params.output_dim)
         self.dropout = nn.Dropout(params.dropout)
 
-    def forward(self, text: torch.Tensor, mask: None | torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self, text: torch.Tensor, mask: None | torch.Tensor = None
+    ) -> torch.Tensor:
         embedded = self.embedding(text)
         embedded = self.pos_encoder(embedded)
         transformed = self.transformer_encoder(embedded, mask=mask)
@@ -57,13 +64,17 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, emb_dim: int, n_heads: int, hid_dim: int, dropout: float):
         super().__init__()
         self.self_attn = MultiHeadAttention(emb_dim, n_heads)
-        self.positionwise_feedforward = PositionwiseFeedforward(emb_dim, hid_dim, dropout)
+        self.positionwise_feedforward = PositionwiseFeedforward(
+            emb_dim, hid_dim, dropout
+        )
 
         self.norm1 = nn.LayerNorm(emb_dim)
         self.norm2 = nn.LayerNorm(emb_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> torch.Tensor:
+    def forward(
+        self, src: torch.Tensor, mask: None | torch.Tensor = None
+    ) -> torch.Tensor:
         # Self-attention
         _src = self.norm1(src)
         attn = self.self_attn(_src, _src, _src, mask=mask)
@@ -85,7 +96,9 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = emb_dim // n_heads
 
         if self.head_dim * n_heads != emb_dim:
-            raise ValueError(f"Embedding size must be divisible by number of heads: {emb_dim} / {n_heads}")
+            raise ValueError(
+                f"Embedding size must be divisible by number of heads: {emb_dim} / {n_heads}"
+            )
 
         self.fc_q = nn.Linear(emb_dim, emb_dim)
         self.fc_k = nn.Linear(emb_dim, emb_dim)
@@ -94,7 +107,11 @@ class MultiHeadAttention(nn.Module):
         self.fc_out = nn.Linear(emb_dim, emb_dim)
 
     def forward(
-        self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor, mask: None | torch.Tensor = None
+        self,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        mask: None | torch.Tensor = None,
     ) -> torch.Tensor:
         batch_size = query.shape[0]
 
@@ -145,14 +162,20 @@ class PositionwiseFeedforward(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, embedding_dimension: int, dropout_probability: float, max_sequence_len: int = 5000):
+    def __init__(
+        self,
+        embedding_dimension: int,
+        dropout_probability: float,
+        max_sequence_len: int = 5000,
+    ):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout_probability)
 
         positional_encoding = torch.zeros(max_sequence_len, embedding_dimension)
         position = torch.arange(0, max_sequence_len, dtype=torch.float).unsqueeze(1)
         div_term = torch.exp(
-            torch.arange(0, embedding_dimension, 2).float() * (-math.log(10000.0) / embedding_dimension)
+            torch.arange(0, embedding_dimension, 2).float()
+            * (-math.log(10000.0) / embedding_dimension)
         )
         positional_encoding[:, 0::2] = torch.sin(position * div_term)
         positional_encoding[:, 1::2] = torch.cos(position * div_term)

@@ -1,7 +1,10 @@
 import torch
 
 from sentiment_classification.dataset import Params, create_dataloaders
-from sentiment_classification.models.text_transformer import TransformerForClassification, TransformerParams
+from sentiment_classification.models.text_transformer import (
+    TransformerForClassification,
+    TransformerParams,
+)
 
 
 def test_forward():
