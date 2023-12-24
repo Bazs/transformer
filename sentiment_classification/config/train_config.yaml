@@ -1,10 +1,10 @@
 ---
 imdb_path: "/Users/bopra/Documents/Debug/sentiment_classification/datasets/imdb_reviews/IMDB Dataset.csv"
 dataset_params:
-  batch_size: 4
+  batch_size: 8
   train_to_val_ratio: 0.7
 model:
-  _target_: sentiment_classification.text_transformer.TransformerForClassification
+  _target_: sentiment_classification.models.text_transformer.TransformerForClassification
   params:
     emb_dim: 256
     n_heads: 8
@@ -12,6 +12,7 @@ model:
     n_layers: 6
     output_dim: 1
     dropout: 0.1
-    max_seq_length: 2000
+    max_seq_length: 5000
 learning_rate: 0.001
-num_epochs: 3
+num_epochs: 100
+output_dir: ${oc.env:DATADIR}/sentiment_classification/training_runs

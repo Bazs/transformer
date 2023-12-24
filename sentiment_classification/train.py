@@ -10,7 +10,8 @@ from torch import nn, optim
 from tqdm import tqdm
 
 from sentiment_classification.dataset import create_dataloaders, Params as DatasetParams
-
+from sentiment_classification.models.utils import save_model_and_optimizer
+import datetime
 
 _logger = logging.getLogger(Path(__file__).stem)
 
@@ -22,6 +23,7 @@ class Config:
     model: dict
     learning_rate: float
     num_epochs: int
+    output_dir: Path
 
 
 @hydra.main(config_path="config", config_name="train_config")
@@ -30,6 +32,10 @@ def main(config_dict: dict | omegaconf.DictConfig):
         config_dict = omegaconf.OmegaConf.to_container(config_dict, resolve=True)
 
     config = cattrs.structure(config_dict, Config)
+
+    run_name = _create_timestamped_run_name()
+    output_dir = config.output_dir / run_name
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     if torch.backends.mps.is_available():
         device = torch.device("mps")
@@ -44,6 +50,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
     criterion = nn.BCEWithLogitsLoss().to(device)
     optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)  # You can adjust learning rate as needed
 
+    best_train_loss = float("inf")
+    best_valid_loss = float("inf")
+
     for epoch in range(config.num_epochs):
         train_loss = train_epoch(
             model,
@@ -52,12 +61,23 @@ def main(config_dict: dict | omegaconf.DictConfig):
             optimizer=optimizer,
             criterion=criterion,
         )
+        if train_loss < best_train_loss:
+            best_train_loss = train_loss
+            save_model_and_optimizer(
+                model=model, optimizer=optimizer, epoch=epoch, filepath=output_dir / f"best_train_epoch_{epoch + 1}.pt"
+            )
+
         valid_loss = evaluate_epoch(
             model,
             data_loader=dataset_and_loaders.test_loader,
             num_batches=dataset_and_loaders.num_test_batches,
             criterion=criterion,
         )
+        if valid_loss < best_valid_loss:
+            best_valid_loss = valid_loss
+            save_model_and_optimizer(
+                model=model, optimizer=optimizer, epoch=epoch, filepath=output_dir / f"best_valid_epoch_{epoch + 1}.pt"
+            )
 
         print(f"Epoch: {epoch+1}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}")
 
@@ -74,7 +94,10 @@ def train_epoch(
 
     epoch_loss = 0
 
+    actual_num_batches = 0
+
     for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Training batch", total=num_batches):
+        actual_num_batches += 1
         optimizer.zero_grad()  # Clear the gradients
 
         # Forward pass: Compute predictions and loss
@@ -87,7 +110,12 @@ def train_epoch(
 
         epoch_loss += loss.item()
 
-    return epoch_loss / len(data_loader)
+    if actual_num_batches != num_batches:
+        _logger.warning(
+            "Expected to train on %d batches, but only trained on %d batches", num_batches, actual_num_batches
+        )
+
+    return epoch_loss / actual_num_batches
 
 
 def evaluate_epoch(
@@ -96,14 +124,27 @@ def evaluate_epoch(
     model.eval()  # Set the model to evaluation mode
     epoch_loss = 0
 
+    actual_num_batches = 0
+
     with torch.no_grad():
         for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Validating batch", total=num_batches):
+            actual_num_batches += 1
+
             predictions = model(text_batch, mask=masks_batch).squeeze(1)
-            loss = criterion(predictions, label_batch)
+            loss = criterion(predictions, label_batch.float())
 
             epoch_loss += loss.item()
 
-    return epoch_loss / len(data_loader)
+    if actual_num_batches != num_batches:
+        _logger.warning(
+            "Expected to validate on %d batches, but only validated on %d batches", num_batches, actual_num_batches
+        )
+
+    return epoch_loss / actual_num_batches
+
+
+def _create_timestamped_run_name() -> str:
+    return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
 if __name__ == "__main__":
