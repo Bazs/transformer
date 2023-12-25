@@ -6,6 +6,7 @@ import cattrs
 import hydra
 import omegaconf
 import torch
+import torchmetrics
 from attr import define
 from torch import nn, optim
 from tqdm import tqdm
@@ -44,18 +45,12 @@ def main(config_dict: dict | omegaconf.DictConfig):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _logger.info("Using device: %s", device)
 
-    dataset_and_loaders = create_dataloaders(
-        device=device, params=config.dataset_params
-    )
+    dataset_and_loaders = create_dataloaders(device=device, params=config.dataset_params)
 
-    model: nn.Module = hydra.utils.instantiate(
-        config.model, vocab_size=len(dataset_and_loaders.vocab)
-    ).to(device)
+    model: nn.Module = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab)).to(device)
 
     criterion = nn.BCEWithLogitsLoss().to(device)
-    optimizer = optim.Adam(
-        model.parameters(), lr=config.learning_rate
-    )  # You can adjust learning rate as needed
+    optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)  # You can adjust learning rate as needed
 
     best_train_loss = float("inf")
     best_valid_loss = float("inf")
@@ -64,109 +59,91 @@ def main(config_dict: dict | omegaconf.DictConfig):
         train_loss = train_epoch(
             model,
             data_loader=dataset_and_loaders.train_loader,
-            num_batches=dataset_and_loaders.num_train_batches,
             optimizer=optimizer,
             criterion=criterion,
+            device=device,
         )
         if train_loss < best_train_loss:
             best_train_loss = train_loss
             save_model_and_optimizer(
-                model=model,
-                optimizer=optimizer,
-                epoch=epoch,
-                filepath=output_dir / f"best_train_epoch_{epoch + 1}.pt",
+                model=model, optimizer=optimizer, epoch=epoch, filepath=output_dir / f"best_train_epoch_{epoch + 1}.pt"
             )
 
         valid_loss = evaluate_epoch(
             model,
             data_loader=dataset_and_loaders.test_loader,
-            num_batches=dataset_and_loaders.num_test_batches,
             criterion=criterion,
+            device=device,
         )
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
             save_model_and_optimizer(
-                model=model,
-                optimizer=optimizer,
-                epoch=epoch,
-                filepath=output_dir / f"best_valid_epoch_{epoch + 1}.pt",
+                model=model, optimizer=optimizer, epoch=epoch, filepath=output_dir / f"best_valid_epoch_{epoch + 1}.pt"
             )
 
-        print(
-            f"Epoch: {epoch+1}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}"
-        )
+        print(f"Epoch: {epoch+1}, Train Loss: {train_loss:.3f}, Val. Loss: {valid_loss:.3f}")
 
 
 def train_epoch(
     model: nn.Module,
     data_loader: torch.utils.data.DataLoader,
-    num_batches: int,
     optimizer: optim.Optimizer,
     criterion: nn.Module,
+    device: torch.device,
 ) -> float:
     """Train the model for one epoch."""
     model.train()  # Set the model to training mode
 
     epoch_loss = 0
 
-    actual_num_batches = 0
+    accuracy_metric = torchmetrics.Accuracy(task="binary").to(device)
 
-    for text_batch, masks_batch, label_batch in tqdm(
-        data_loader, desc="Training batch", total=num_batches
-    ):
-        actual_num_batches += 1
+    for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Training batch", total=len(data_loader)):
         optimizer.zero_grad()  # Clear the gradients
 
         # Forward pass: Compute predictions and loss
         predictions = model(text_batch, mask=masks_batch).squeeze(1)
-        loss = criterion(predictions, label_batch.float())
+        label_batch = label_batch.float()
+        loss = criterion(predictions, label_batch)
 
         # Backward pass: compute gradient and update weights
         loss.backward()
         optimizer.step()
 
+        with torch.no_grad():
+            pred_probs = torch.sigmoid(predictions)
+            accuracy_metric(pred_probs, label_batch)
+
         epoch_loss += loss.item()
 
-    if actual_num_batches != num_batches:
-        _logger.warning(
-            "Expected to train on %d batches, but only trained on %d batches",
-            num_batches,
-            actual_num_batches,
-        )
+    accuracy = accuracy_metric.compute()
+    _logger.info("Train accuracy: %s", accuracy)
 
-    return epoch_loss / actual_num_batches
+    return epoch_loss / len(data_loader)
 
 
 def evaluate_epoch(
-    model: nn.Module,
-    data_loader: torch.utils.data.DataLoader,
-    num_batches: int,
-    criterion: nn.Module,
+    model: nn.Module, data_loader: torch.utils.data.DataLoader, criterion: nn.Module, device: torch.device
 ) -> float:
     model.eval()  # Set the model to evaluation mode
     epoch_loss = 0
 
-    actual_num_batches = 0
+    accuracy_metric = torchmetrics.Accuracy(task="binary").to(device)
 
     with torch.no_grad():
-        for text_batch, masks_batch, label_batch in tqdm(
-            data_loader, desc="Validating batch", total=num_batches
-        ):
-            actual_num_batches += 1
-
+        for text_batch, masks_batch, label_batch in tqdm(data_loader, desc="Validating batch", total=len(data_loader)):
             predictions = model(text_batch, mask=masks_batch).squeeze(1)
             loss = criterion(predictions, label_batch.float())
 
+            pred_probs = torch.sigmoid(predictions)
+            accuracy_metric(pred_probs, label_batch)
+
             epoch_loss += loss.item()
 
-    if actual_num_batches != num_batches:
-        _logger.warning(
-            "Expected to validate on %d batches, but only validated on %d batches",
-            num_batches,
-            actual_num_batches,
-        )
+    accuracy = accuracy_metric.compute()
+    _logger.info("Validation accuracy: %s", accuracy)
 
-    return epoch_loss / actual_num_batches
+    return epoch_loss / len(data_loader)
 
 
 def _create_timestamped_run_name() -> str:

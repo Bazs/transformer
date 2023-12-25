@@ -8,9 +8,7 @@ OPTIMIZER_STATE_DICT_KEY = "optimizer_state_dict"
 EPOCH_KEY = "epoch"
 
 
-def save_model_and_optimizer(
-    model: nn.Module, optimizer: optim.Optimizer, epoch: int, filepath: Path
-):
+def save_model_and_optimizer(model: nn.Module, optimizer: optim.Optimizer, epoch: int, filepath: Path):
     torch.save(
         {
             EPOCH_KEY: epoch,

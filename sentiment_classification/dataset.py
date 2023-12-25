@@ -1,10 +1,7 @@
-import pathlib
-
 import torch
 import torchtext
 from attr import define
 from torch.utils.data import DataLoader
-from torch.utils.data.dataset import random_split
 from torchtext.data.utils import get_tokenizer
 from torchtext.datasets import IMDB
 from torchtext.vocab import build_vocab_from_iterator
@@ -21,9 +18,7 @@ class Params:
 @define
 class DatasetAndLoaders:
     train_loader: DataLoader
-    num_train_batches: int
     test_loader: DataLoader
-    num_test_batches: int
     vocab: torchtext.vocab.Vocab
 
 
@@ -40,7 +35,7 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
     vocab.set_default_index(vocab["<unk>"])
 
     text_pipeline = lambda x: vocab(tokenizer(x))
-    label_pipeline = lambda x: 1 if x == "pos" else 0
+    label_pipeline = lambda x: 1 if x == 2 else 0
 
     def collate_batch(batch):
         label_list, text_list, masks = [], [], []
@@ -51,27 +46,20 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
             masks.append(torch.ones(len(processed_text), dtype=torch.int64))
         label_list = torch.tensor(label_list, dtype=torch.int64)
         text_list = torch.nn.utils.rnn.pad_sequence(text_list, batch_first=True)
-        masks = torch.nn.utils.rnn.pad_sequence(
-            masks, batch_first=True, padding_value=0
-        )
+        masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True, padding_value=0)
         return text_list.to(device), masks.to(device), label_list.to(device)
 
     train_iter, test_iter = IMDB()
 
-    train_loader = DataLoader(
-        train_iter,
-        batch_size=params.batch_size,
-        collate_fn=collate_batch,
-    )
-    test_loader = DataLoader(
-        test_iter,
-        batch_size=params.batch_size,
-        collate_fn=collate_batch,
-    )
+    # Converting to list is highly memory-inefficient, but due to a torchtext bug, we have to do this to shuffle.
+    # See https://github.com/pytorch/text/issues/2041
+    train_dataset = list(train_iter)
+    test_dataset = list(test_iter)
+
+    train_loader = DataLoader(train_dataset, batch_size=params.batch_size, collate_fn=collate_batch, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=params.batch_size, collate_fn=collate_batch, shuffle=True)
     return DatasetAndLoaders(
         train_loader=train_loader,
-        num_train_batches=IMDB_DATASET_LEN // params.batch_size,
         test_loader=test_loader,
-        num_test_batches=IMDB_DATASET_LEN // params.batch_size,
         vocab=vocab,
     )
