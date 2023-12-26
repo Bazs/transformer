@@ -8,12 +8,10 @@ from sentiment_classification.models.text_transformer import (
 
 
 def test_forward():
-    device = torch.device("cpu")
-
     batch_size = 2
-    params = Params(batch_size=batch_size, train_to_val_ratio=0.8)
+    params = Params(batch_size=batch_size, train_to_val_ratio=0.8, num_workers=1)
 
-    datasets = create_dataloaders(device=device, params=params)
+    datasets = create_dataloaders(params=params)
 
     model = TransformerForClassification(
         vocab_size=len(datasets.vocab),

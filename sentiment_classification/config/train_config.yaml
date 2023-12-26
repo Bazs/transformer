@@ -3,6 +3,7 @@ imdb_path: "/Users/bopra/Documents/Debug/sentiment_classification/datasets/imdb_
 dataset_params:
   batch_size: 8
   train_to_val_ratio: 0.7
+  num_workers: 8
 model:
   _target_: sentiment_classification.models.text_transformer.TransformerForClassification
   params:
@@ -13,6 +14,7 @@ model:
     output_dim: 1
     dropout: 0.1
     max_seq_length: 5000
-learning_rate: 0.001
+learning_rate: 0.0001
 num_epochs: 100
 output_dir: ${oc.env:DATADIR}/sentiment_classification/training_runs
+wandb_enabled: true

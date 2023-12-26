@@ -13,6 +13,7 @@ IMDB_DATASET_LEN = 25000
 class Params:
     batch_size: int
     train_to_val_ratio: float
+    num_workers: int
 
 
 @define
@@ -22,7 +23,7 @@ class DatasetAndLoaders:
     vocab: torchtext.vocab.Vocab
 
 
-def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoaders:
+def create_dataloaders(params: Params) -> DatasetAndLoaders:
     """Return train, validation, and test dataloaders."""
     tokenizer = get_tokenizer("basic_english")
 
@@ -47,7 +48,7 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
         label_list = torch.tensor(label_list, dtype=torch.int64)
         text_list = torch.nn.utils.rnn.pad_sequence(text_list, batch_first=True)
         masks = torch.nn.utils.rnn.pad_sequence(masks, batch_first=True, padding_value=0)
-        return text_list.to(device), masks.to(device), label_list.to(device)
+        return text_list, masks, label_list
 
     train_iter, test_iter = IMDB()
 
@@ -56,8 +57,20 @@ def create_dataloaders(device: torch.device, params: Params) -> DatasetAndLoader
     train_dataset = list(train_iter)
     test_dataset = list(test_iter)
 
-    train_loader = DataLoader(train_dataset, batch_size=params.batch_size, collate_fn=collate_batch, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=params.batch_size, collate_fn=collate_batch, shuffle=True)
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=params.batch_size,
+        collate_fn=collate_batch,
+        shuffle=True,
+        num_workers=params.num_workers,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=params.batch_size,
+        collate_fn=collate_batch,
+        shuffle=False,
+        num_workers=params.num_workers,
+    )
     return DatasetAndLoaders(
         train_loader=train_loader,
         test_loader=test_loader,
