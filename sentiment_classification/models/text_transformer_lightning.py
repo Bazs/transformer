@@ -13,14 +13,16 @@ TRAIN_LOSS_KEY = "train_loss"
 VAL_LOSS_KEY = "val_loss"
 TRAIN_ACCURACY_KEY = "train_accuracy"
 VAL_ACCURACY_KEY = "val_accuracy"
+LEARNING_RATE_KEY = "learning_rate"
 
 
 class TransformerLightningModule(L.LightningModule):
-    def __init__(self, model: nn.Module, learning_rate: float) -> None:
+    def __init__(self, model: nn.Module, learning_rate: float, lr_scheduler_patience: int) -> None:
         super().__init__()
         self.model = model
         self.loss = nn.BCEWithLogitsLoss()
         self.learning_rate = learning_rate
+        self.lr_scheduler_patience = lr_scheduler_patience
         self.train_accuracy_metric = torchmetrics.Accuracy(task="binary")
         self.val_accuracy_metric = torchmetrics.Accuracy(task="binary")
 
@@ -37,6 +39,10 @@ class TransformerLightningModule(L.LightningModule):
         pred_probs = torch.sigmoid(predictions)
         self.train_accuracy_metric(pred_probs, label.float())
         self.log(TRAIN_ACCURACY_KEY, self.train_accuracy_metric, on_step=False, on_epoch=True, prog_bar=True)
+
+        self.log(
+            LEARNING_RATE_KEY, self.optimizers().param_groups[0]["lr"], prog_bar=True, on_step=False, on_epoch=True
+        )
 
         return loss
 
@@ -58,4 +64,17 @@ class TransformerLightningModule(L.LightningModule):
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            patience=self.lr_scheduler_patience,
+            verbose=True,
+            factor=0.1,
+            mode="max",
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "monitor": VAL_ACCURACY_KEY,
+            },
+        }

@@ -16,5 +16,9 @@ model:
     max_seq_length: 5000
 learning_rate: 0.0001
 num_epochs: 100
+save_top_k_models: 3
+early_stopping_patience: 6
+lr_scheduler_patience: 3
+
 output_dir: ${oc.env:DATADIR}/sentiment_classification/training_runs
 wandb_enabled: true

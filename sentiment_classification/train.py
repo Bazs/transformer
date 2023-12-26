@@ -32,6 +32,10 @@ class Config:
     model: dict
     learning_rate: float
     num_epochs: int
+    save_top_k_models: int
+    early_stopping_patience: int
+    lr_scheduler_patience: int
+
     output_dir: Path
     wandb_enabled: bool
 
@@ -50,7 +54,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
     dataset_and_loaders = create_dataloaders(params=config.dataset_params)
 
     model: nn.Module = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab))
-    lightning_model = TransformerLightningModule(model=model, learning_rate=config.learning_rate)
+    lightning_model = TransformerLightningModule(
+        model=model, learning_rate=config.learning_rate, lr_scheduler_patience=config.lr_scheduler_patience
+    )
 
     if config.wandb_enabled:
         wandb_logger = WandbLogger(project=WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
@@ -61,8 +67,12 @@ def main(config_dict: dict | omegaconf.DictConfig):
         wandb.init(mode="disabled")
         lightning_logger = None
 
-    checkpoint_callback = ModelCheckpoint(dirpath=output_dir, save_top_k=5, monitor=VAL_ACCURACY_KEY, mode="max")
-    early_stopping_callback = EarlyStopping(monitor=VAL_ACCURACY_KEY, mode="max", patience=3)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=output_dir, save_top_k=config.save_top_k_models, monitor=VAL_ACCURACY_KEY, mode="max"
+    )
+    early_stopping_callback = EarlyStopping(
+        monitor=VAL_ACCURACY_KEY, mode="max", patience=config.early_stopping_patience
+    )
 
     trainer = L.Trainer(
         default_root_dir=output_dir,
