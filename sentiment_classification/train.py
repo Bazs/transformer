@@ -27,7 +27,6 @@ _logger = logging.getLogger(Path(__file__).stem)
 
 @define
 class Config:
-    imdb_path: Path
     dataset_params: DatasetParams
     model: dict
     learning_rate: float

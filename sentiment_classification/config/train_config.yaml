@@ -1,5 +1,4 @@
 ---
-imdb_path: "/Users/bopra/Documents/Debug/sentiment_classification/datasets/imdb_reviews/IMDB Dataset.csv"
 dataset_params:
   batch_size: 8
   train_to_val_ratio: 0.7
