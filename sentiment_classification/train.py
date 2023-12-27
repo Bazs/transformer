@@ -1,13 +1,11 @@
 import datetime
 import logging
 from pathlib import Path
-from typing import Optional
 
 import cattrs
 import hydra
 import lightning as L
 import omegaconf
-import torch
 from attr import define
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
@@ -37,10 +35,10 @@ class Config:
     dataset_params: DatasetParams
     model: dict
     optimizer: dict
+    lr_scheduler: dict
     num_epochs: int
     save_top_k_models: int
     early_stopping_patience: int
-    lr_scheduler_patience: int
 
     output_dir: Path
     wandb_enabled: bool
@@ -61,8 +59,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     model: nn.Module = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab))
     optimizer_factory: callable = hydra.utils.instantiate(config.optimizer)
+    lr_scheduler_factory: callable = hydra.utils.instantiate(config.lr_scheduler)
     lightning_model = TransformerLightningModule(
-        model=model, optimizer_factory=optimizer_factory, lr_scheduler_patience=config.lr_scheduler_patience
+        model=model, optimizer_factory=optimizer_factory, lr_scheduler_factory=lr_scheduler_factory
     )
 
     if config.wandb_enabled:
@@ -77,7 +76,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
     checkpoint_callback = ModelCheckpoint(
         dirpath=output_dir, save_top_k=config.save_top_k_models, monitor=VAL_ACCURACY_KEY, mode="max"
     )
-    early_stopping_callback = EarlyStopping(monitor=VAL_LOSS_KEY, mode="min", patience=config.early_stopping_patience)
+    early_stopping_callback = EarlyStopping(
+        monitor=VAL_LOSS_KEY, mode="min", patience=config.early_stopping_patience, verbose=True
+    )
 
     trainer = L.Trainer(
         default_root_dir=output_dir,

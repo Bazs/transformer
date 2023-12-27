@@ -17,12 +17,12 @@ LEARNING_RATE_KEY = "learning_rate"
 
 
 class TransformerLightningModule(L.LightningModule):
-    def __init__(self, model: nn.Module, optimizer_factory: callable, lr_scheduler_patience: int) -> None:
+    def __init__(self, model: nn.Module, optimizer_factory: callable, lr_scheduler_factory: callable) -> None:
         super().__init__()
         self.model = model
         self.loss = nn.BCEWithLogitsLoss()
         self.optimizer_factory = optimizer_factory
-        self.lr_scheduler_patience = lr_scheduler_patience
+        self.lr_scheduler_factory = lr_scheduler_factory
         self.train_accuracy_metric = torchmetrics.Accuracy(task="binary")
         self.val_accuracy_metric = torchmetrics.Accuracy(task="binary")
 
@@ -74,13 +74,7 @@ class TransformerLightningModule(L.LightningModule):
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = self.optimizer_factory(params=self.parameters())
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            patience=self.lr_scheduler_patience,
-            verbose=True,
-            factor=0.1,
-            mode="min",
-        )
+        scheduler = self.lr_scheduler_factory(optimizer)
         return {
             "optimizer": optimizer,
             "lr_scheduler": {

@@ -17,19 +17,17 @@ optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
   lr: 0.0001
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  patience: 3
+  verbose: true
+  factor: 0.1
+  mode: min
+  min_lr: 1e-6
 num_epochs: 100
 save_top_k_models: 3
-early_stopping_patience: 6
-lr_scheduler_patience: 3
+early_stopping_patience: 10
 
 output_dir: ${oc.env:DATADIR}/sentiment_classification/training_runs
 wandb_enabled: true
-
-wandb_sweep_params:
-  count: 10
-  sweep_config:
-    method: random
-    metric:
-      goal: maximize
-      name: val_accuracy
-    parameters:
