@@ -6,3 +6,6 @@ outputs/
 
 # VS Code
 .vscode
+
+# WandB
+wandb/

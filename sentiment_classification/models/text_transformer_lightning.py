@@ -1,10 +1,10 @@
 import lightning as L
 import torch
 import torchmetrics
-import wandb
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn
 
+import wandb
 from sentiment_classification.models.text_transformer import (
     TransformerForClassification,
 )
@@ -17,11 +17,11 @@ LEARNING_RATE_KEY = "learning_rate"
 
 
 class TransformerLightningModule(L.LightningModule):
-    def __init__(self, model: nn.Module, learning_rate: float, lr_scheduler_patience: int) -> None:
+    def __init__(self, model: nn.Module, optimizer_factory: callable, lr_scheduler_patience: int) -> None:
         super().__init__()
         self.model = model
         self.loss = nn.BCEWithLogitsLoss()
-        self.learning_rate = learning_rate
+        self.optimizer_factory = optimizer_factory
         self.lr_scheduler_patience = lr_scheduler_patience
         self.train_accuracy_metric = torchmetrics.Accuracy(task="binary")
         self.val_accuracy_metric = torchmetrics.Accuracy(task="binary")
@@ -34,14 +34,19 @@ class TransformerLightningModule(L.LightningModule):
         text, mask, label = batch
         predictions = self.model(text, mask=mask).squeeze(1)
         loss = self.loss(predictions, label.float())
-        self.log(TRAIN_LOSS_KEY, loss, prog_bar=True, on_epoch=True, on_step=False)
-
         pred_probs = torch.sigmoid(predictions)
-        self.train_accuracy_metric(pred_probs, label.float())
-        self.log(TRAIN_ACCURACY_KEY, self.train_accuracy_metric, on_step=False, on_epoch=True, prog_bar=True)
 
-        self.log(
-            LEARNING_RATE_KEY, self.optimizers().param_groups[0]["lr"], prog_bar=True, on_step=False, on_epoch=True
+        self.train_accuracy_metric(pred_probs, label.float())
+
+        self.log_dict(
+            {
+                TRAIN_LOSS_KEY: loss,
+                TRAIN_ACCURACY_KEY: self.train_accuracy_metric,
+                LEARNING_RATE_KEY: self.optimizers().param_groups[0]["lr"],
+            },
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
         )
 
         return loss
@@ -54,27 +59,32 @@ class TransformerLightningModule(L.LightningModule):
         text, mask, label = batch
         predictions = self.model(text, mask=mask).squeeze(1)
         loss = self.loss(predictions, label.float())
-        self.log(VAL_LOSS_KEY, loss, prog_bar=True, on_epoch=True, on_step=False)
-
         pred_probs = torch.sigmoid(predictions)
+
         self.val_accuracy_metric(pred_probs, label.float())
-        self.log(VAL_ACCURACY_KEY, self.val_accuracy_metric, on_step=False, on_epoch=True, prog_bar=True)
+
+        self.log_dict(
+            {VAL_LOSS_KEY: loss, VAL_ACCURACY_KEY: self.val_accuracy_metric},
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return loss
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
+        optimizer = self.optimizer_factory(params=self.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
             patience=self.lr_scheduler_patience,
             verbose=True,
             factor=0.1,
-            mode="max",
+            mode="min",
         )
         return {
             "optimizer": optimizer,
             "lr_scheduler": {
                 "scheduler": scheduler,
-                "monitor": VAL_ACCURACY_KEY,
+                "monitor": VAL_LOSS_KEY,
             },
         }

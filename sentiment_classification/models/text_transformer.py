@@ -39,8 +39,8 @@ class TransformerForClassification(nn.Module):
         embedded = self.embedding(text)
         embedded = self.pos_encoder(embedded)
         transformed = self.transformer_encoder(embedded, mask=mask)
-        pooled = transformed.mean(dim=1)
-        return self.fc_out(self.dropout(pooled))
+        cls_output = transformed[:, 0, :]  # Get the output corresponding to the classification token
+        return self.fc_out(self.dropout(cls_output))
 
 
 class TransformerEncoder(nn.Module):
@@ -154,7 +154,7 @@ class PositionalEncoding(nn.Module):
         self,
         embedding_dimension: int,
         dropout_probability: float,
-        max_sequence_len: int = 5000,
+        max_sequence_len: int,
     ):
         super().__init__()
         self.dropout = nn.Dropout(p=dropout_probability)

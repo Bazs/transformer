@@ -1,3 +1,5 @@
+from typing import Iterable
+
 import torch
 import torchtext
 from attr import define
@@ -5,8 +7,6 @@ from torch.utils.data import DataLoader
 from torchtext.data.utils import get_tokenizer
 from torchtext.datasets import IMDB
 from torchtext.vocab import build_vocab_from_iterator
-
-IMDB_DATASET_LEN = 25000
 
 
 @define
@@ -19,6 +19,7 @@ class Params:
 @define
 class DatasetAndLoaders:
     train_loader: DataLoader
+    val_loader: DataLoader
     test_loader: DataLoader
     vocab: torchtext.vocab.Vocab
 
@@ -32,10 +33,13 @@ def create_dataloaders(params: Params) -> DatasetAndLoaders:
             yield tokenizer(text)
 
     train_iter = IMDB(split="train")
-    vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=["<unk>"])
-    vocab.set_default_index(vocab["<unk>"])
+    unknown_token = "<unk>"
+    # The classification token is prepended to the text, and is used to predict the sentiment.
+    classification_token = "<cls>"
+    vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=[unknown_token, classification_token])
+    vocab.set_default_index(vocab[unknown_token])
 
-    text_pipeline = lambda x: vocab(tokenizer(x))
+    text_pipeline = lambda x: vocab([classification_token] + tokenizer(x))
     label_pipeline = lambda x: 1 if x == 2 else 0
 
     def collate_batch(batch):
@@ -52,9 +56,11 @@ def create_dataloaders(params: Params) -> DatasetAndLoaders:
 
     train_iter, test_iter = IMDB()
 
-    # Converting to list is highly memory-inefficient, but due to a torchtext bug, we have to do this to shuffle.
+    # Converting to list is highly memory-inefficient, but due to a torchtext bug we have to do this to shuffle.
     # See https://github.com/pytorch/text/issues/2041
-    train_dataset = list(train_iter)
+    train_dataset, val_dataset = split_train_val(
+        original_train_list=list(train_iter), train_to_val_ratio=params.train_to_val_ratio
+    )
     test_dataset = list(test_iter)
 
     train_loader = DataLoader(
@@ -62,6 +68,13 @@ def create_dataloaders(params: Params) -> DatasetAndLoaders:
         batch_size=params.batch_size,
         collate_fn=collate_batch,
         shuffle=True,
+        num_workers=params.num_workers,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=params.batch_size,
+        collate_fn=collate_batch,
+        shuffle=False,
         num_workers=params.num_workers,
     )
     test_loader = DataLoader(
@@ -73,6 +86,32 @@ def create_dataloaders(params: Params) -> DatasetAndLoaders:
     )
     return DatasetAndLoaders(
         train_loader=train_loader,
+        val_loader=val_loader,
         test_loader=test_loader,
         vocab=vocab,
     )
+
+
+def split_train_val(original_train_list: list, train_to_val_ratio: float) -> tuple[list, list]:
+    """Split the IMDB dataset into train and validation sets.
+
+    It is assumed that the dataset is not shuffled, and that the positive and negative reviews are grouped together.
+    """
+    # Get positive and negative reviews separately
+    positive_review_indices = [i for i, (label, _) in enumerate(original_train_list) if label == 2]
+    negative_review_indices = [i for i, (label, _) in enumerate(original_train_list) if label == 1]
+
+    assert len(positive_review_indices) == len(negative_review_indices)
+
+    num_single_class_train_samples = int(len(positive_review_indices) * train_to_val_ratio)
+    positive_train_samples = [original_train_list[i] for i in positive_review_indices[:num_single_class_train_samples]]
+    positive_val_samples = [original_train_list[i] for i in positive_review_indices[num_single_class_train_samples:]]
+    negative_train_samples = [original_train_list[i] for i in negative_review_indices[:num_single_class_train_samples]]
+    negative_val_samples = [original_train_list[i] for i in negative_review_indices[num_single_class_train_samples:]]
+
+    train_list = positive_train_samples + negative_train_samples
+    val_list = positive_val_samples + negative_val_samples
+
+    assert len(train_list) + len(val_list) == len(original_train_list)
+
+    return train_list, val_list

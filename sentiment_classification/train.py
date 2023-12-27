@@ -1,35 +1,42 @@
 import datetime
 import logging
 from pathlib import Path
+from typing import Optional
 
 import cattrs
 import hydra
 import lightning as L
 import omegaconf
-import wandb
+import torch
 from attr import define
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import WandbLogger
 from torch import nn
 
+import wandb
 from sentiment_classification.dataset import Params as DatasetParams
 from sentiment_classification.dataset import create_dataloaders
 from sentiment_classification.models.text_transformer_lightning import (
     VAL_ACCURACY_KEY,
+    VAL_LOSS_KEY,
     TransformerLightningModule,
 )
 
 WANDB_PROJECT_NAME = "sentiment-classification-transformer"
 
-_logger = logging.getLogger(Path(__file__).stem)
+
+@define
+class WandbSweepParams:
+    count: int
+    sweep_config: dict
 
 
 @define
 class Config:
     dataset_params: DatasetParams
     model: dict
-    learning_rate: float
+    optimizer: dict
     num_epochs: int
     save_top_k_models: int
     early_stopping_patience: int
@@ -53,13 +60,14 @@ def main(config_dict: dict | omegaconf.DictConfig):
     dataset_and_loaders = create_dataloaders(params=config.dataset_params)
 
     model: nn.Module = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab))
+    optimizer_factory: callable = hydra.utils.instantiate(config.optimizer)
     lightning_model = TransformerLightningModule(
-        model=model, learning_rate=config.learning_rate, lr_scheduler_patience=config.lr_scheduler_patience
+        model=model, optimizer_factory=optimizer_factory, lr_scheduler_patience=config.lr_scheduler_patience
     )
 
     if config.wandb_enabled:
         wandb_logger = WandbLogger(project=WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
-        wandb_logger.experiment.config.update(config_dict)
+        wandb_logger.experiment.config.update(cattrs.unstructure(config))
         wandb_logger.watch(model)
         lightning_logger = wandb_logger
     else:
@@ -69,9 +77,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
     checkpoint_callback = ModelCheckpoint(
         dirpath=output_dir, save_top_k=config.save_top_k_models, monitor=VAL_ACCURACY_KEY, mode="max"
     )
-    early_stopping_callback = EarlyStopping(
-        monitor=VAL_ACCURACY_KEY, mode="max", patience=config.early_stopping_patience
-    )
+    early_stopping_callback = EarlyStopping(monitor=VAL_LOSS_KEY, mode="min", patience=config.early_stopping_patience)
 
     trainer = L.Trainer(
         default_root_dir=output_dir,
@@ -79,7 +85,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
         logger=lightning_logger,
         callbacks=[checkpoint_callback, early_stopping_callback],
     )
-    trainer.fit(lightning_model, dataset_and_loaders.train_loader, dataset_and_loaders.test_loader)
+    trainer.fit(lightning_model, dataset_and_loaders.train_loader, dataset_and_loaders.val_loader)
     wandb.log({"best_model_path": str(checkpoint_callback.best_model_path)})
 
 
