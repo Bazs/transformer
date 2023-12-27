@@ -25,12 +25,6 @@ WANDB_PROJECT_NAME = "sentiment-classification-transformer"
 
 
 @define
-class WandbSweepParams:
-    count: int
-    sweep_config: dict
-
-
-@define
 class Config:
     dataset_params: DatasetParams
     model: dict
