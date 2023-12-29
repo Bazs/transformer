@@ -51,10 +51,10 @@ class TransformerEncoder(nn.Module):
         self.layers = nn.ModuleList([copy.deepcopy(layer) for _ in range(n_layers)])
 
     def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return the updated queries and attention scores from the last layer."""
+        """Return the updated queries and attention scores from the second layer."""
         for layer_index, layer in enumerate(self.layers):
             src, attention = layer(src, mask=mask)
-            if layer_index == len(self.layers) - 1:
+            if layer_index == 1:
                 output_attention = attention
         return src, output_attention
 

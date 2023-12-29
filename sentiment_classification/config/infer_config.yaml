@@ -1,3 +1,4 @@
 ---
-checkpoint_path: ${oc.env:DATADIR}/sentiment_classification/training_runs/2023-12-29_19-00-16/epoch=0-step=10000.ckpt
-input_text: "This movie was incredibly good."
+checkpoint_path: ${oc.env:DATADIR}/sentiment_classification/training_runs/2023-12-29_19-29-44/epoch=9-step=100000.ckpt
+input_text: "It starts good, but then it gets worse and worse. It's a shame, because the actors are good."
+attention_viz_outfile_path: ./sentiment_classification/imgs/attention_viz.png

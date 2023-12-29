@@ -14,3 +14,9 @@ what's available in the Hydra config file [./config/train_config.yaml](./config/
 1. From the root of the repository, run `wandb sweep sentiment_classification/config/wandb_sweep.yaml`. This will print out the command
 you need to run next.
 1. Start the Sweep Agent using the command from the previous step.
+
+### Example results
+
+Visualization of the attention scores from the second layer of the Transformer encoder for all heads. A darker color means higher attention.
+
+![Attention scores](./imgs/attention_viz.png)
