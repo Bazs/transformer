@@ -1,6 +1,9 @@
+from typing import Any, Callable
+
 import lightning as L
 import torch
 import torchmetrics
+import torchtext
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn
 
@@ -17,9 +20,17 @@ LEARNING_RATE_KEY = "learning_rate"
 
 
 class TransformerLightningModule(L.LightningModule):
-    def __init__(self, model: nn.Module, optimizer_factory: callable, lr_scheduler_factory: callable) -> None:
+    def __init__(
+        self,
+        vocab: torchtext.vocab.Vocab,
+        model_factory: Callable[[], nn.Module],
+        optimizer_factory: callable,
+        lr_scheduler_factory: callable,
+    ) -> None:
         super().__init__()
-        self.model = model
+        self.save_hyperparameters()
+        self.model = model_factory()
+        self.vocab = vocab
         self.loss = nn.BCEWithLogitsLoss()
         self.optimizer_factory = optimizer_factory
         self.lr_scheduler_factory = lr_scheduler_factory
@@ -32,7 +43,8 @@ class TransformerLightningModule(L.LightningModule):
             wandb.define_metric(TRAIN_ACCURACY_KEY, summary="max", goal="maximize")
 
         text, mask, label = batch
-        predictions = self.model(text, mask=mask).squeeze(1)
+        predictions, _ = self.model(text, mask=mask)
+        predictions = predictions.squeeze(1)
         loss = self.loss(predictions, label.float())
         pred_probs = torch.sigmoid(predictions)
 
@@ -57,7 +69,8 @@ class TransformerLightningModule(L.LightningModule):
             wandb.define_metric(VAL_ACCURACY_KEY, summary="max", goal="maximize")
 
         text, mask, label = batch
-        predictions = self.model(text, mask=mask).squeeze(1)
+        predictions, _ = self.model(text, mask=mask)
+        predictions = predictions.squeeze(1)
         loss = self.loss(predictions, label.float())
         pred_probs = torch.sigmoid(predictions)
 
@@ -71,6 +84,16 @@ class TransformerLightningModule(L.LightningModule):
         )
 
         return loss
+
+    def predict_step(self, batch: torch.Tensor, batch_idx: int) -> tuple[float, torch.Tensor]:
+        """Return the predicted sentiment and the attention scores. Expects a batch containing a single text."""
+        if 1 != len(batch):
+            raise ValueError("The batch size must be 1 for prediction.")
+        text = batch
+        mask = torch.ones_like(text)
+        predictions, attention = self.model(text, mask=mask)
+        predictions = torch.sigmoid(predictions)
+        return predictions.item(), attention.squeeze(0)
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         optimizer = self.optimizer_factory(params=self.parameters())

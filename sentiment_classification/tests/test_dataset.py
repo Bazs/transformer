@@ -1,6 +1,6 @@
 import torch
 
-from sentiment_classification.dataset import Params, create_dataloaders
+from sentiment_classification.data.dataset import Params, create_dataloaders
 
 
 def test_create_dataloaders():

@@ -1,6 +1,7 @@
 import datetime
 import logging
 from pathlib import Path
+from typing import Callable
 
 import cattrs
 import hydra
@@ -13,8 +14,8 @@ from pytorch_lightning.loggers import WandbLogger
 from torch import nn
 
 import wandb
-from sentiment_classification.dataset import Params as DatasetParams
-from sentiment_classification.dataset import create_dataloaders
+from sentiment_classification.data.dataset import Params as DatasetParams
+from sentiment_classification.data.dataset import create_dataloaders
 from sentiment_classification.models.text_transformer_lightning import (
     VAL_ACCURACY_KEY,
     VAL_LOSS_KEY,
@@ -51,17 +52,22 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     dataset_and_loaders = create_dataloaders(params=config.dataset_params)
 
-    model: nn.Module = hydra.utils.instantiate(config.model, vocab_size=len(dataset_and_loaders.vocab))
+    model_factory: Callable[[], nn.Module] = hydra.utils.instantiate(
+        config.model, vocab_size=len(dataset_and_loaders.vocab)
+    )
     optimizer_factory: callable = hydra.utils.instantiate(config.optimizer)
     lr_scheduler_factory: callable = hydra.utils.instantiate(config.lr_scheduler)
-    lightning_model = TransformerLightningModule(
-        model=model, optimizer_factory=optimizer_factory, lr_scheduler_factory=lr_scheduler_factory
+    lightning_module = TransformerLightningModule(
+        model_factory=model_factory,
+        vocab=dataset_and_loaders.vocab,
+        optimizer_factory=optimizer_factory,
+        lr_scheduler_factory=lr_scheduler_factory,
     )
 
     if config.wandb_enabled:
         wandb_logger = WandbLogger(project=WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
         wandb_logger.experiment.config.update(cattrs.unstructure(config))
-        wandb_logger.watch(model)
+        wandb_logger.watch(lightning_module.model)
         lightning_logger = wandb_logger
     else:
         wandb.init(mode="disabled")
@@ -80,7 +86,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
         logger=lightning_logger,
         callbacks=[checkpoint_callback, early_stopping_callback],
     )
-    trainer.fit(lightning_model, dataset_and_loaders.train_loader, dataset_and_loaders.val_loader)
+    trainer.fit(lightning_module, dataset_and_loaders.train_loader, dataset_and_loaders.val_loader)
     wandb.log({"best_model_path": str(checkpoint_callback.best_model_path)})
 
 

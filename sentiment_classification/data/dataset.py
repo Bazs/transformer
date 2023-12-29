@@ -1,12 +1,17 @@
-from typing import Iterable
+from typing import Any
 
 import torch
 import torchtext
 from attr import define
 from torch.utils.data import DataLoader
-from torchtext.data.utils import get_tokenizer
 from torchtext.datasets import IMDB
 from torchtext.vocab import build_vocab_from_iterator
+
+from sentiment_classification.data.data_pipeline import (
+    CLASSIFICATION_TOKEN,
+    get_tokenizer,
+    preprocess_text,
+)
 
 
 @define
@@ -26,7 +31,7 @@ class DatasetAndLoaders:
 
 def create_dataloaders(params: Params) -> DatasetAndLoaders:
     """Return train, validation, and test dataloaders."""
-    tokenizer = get_tokenizer("basic_english")
+    tokenizer = get_tokenizer()
 
     def yield_tokens(data_iter):
         for _, text in data_iter:
@@ -35,18 +40,16 @@ def create_dataloaders(params: Params) -> DatasetAndLoaders:
     train_iter = IMDB(split="train")
     unknown_token = "<unk>"
     # The classification token is prepended to the text, and is used to predict the sentiment.
-    classification_token = "<cls>"
-    vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=[unknown_token, classification_token])
+    vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=[unknown_token, CLASSIFICATION_TOKEN])
     vocab.set_default_index(vocab[unknown_token])
 
-    text_pipeline = lambda x: vocab([classification_token] + tokenizer(x))
     label_pipeline = lambda x: 1 if x == 2 else 0
 
     def collate_batch(batch):
         label_list, text_list, masks = [], [], []
         for _label, _text in batch:
             label_list.append(label_pipeline(_label))
-            processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
+            processed_text = preprocess_text(_text, tokenizer, vocab)
             text_list.append(processed_text)
             masks.append(torch.ones(len(processed_text), dtype=torch.int64))
         label_list = torch.tensor(label_list, dtype=torch.int64)

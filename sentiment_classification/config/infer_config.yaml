@@ -1,0 +1,3 @@
+---
+checkpoint_path: ${oc.env:DATADIR}/sentiment_classification/training_runs/2023-12-29_19-00-16/epoch=0-step=10000.ckpt
+input_text: "This movie was incredibly good."

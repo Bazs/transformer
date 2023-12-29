@@ -5,13 +5,14 @@ dataset_params:
   num_workers: 8
 model:
   _target_: sentiment_classification.models.text_transformer.TransformerForClassification
+  _partial_: true
   params:
     emb_dim: 256
     n_heads: 8
     hid_dim: 512
     n_layers: 8
     output_dim: 1
-    dropout: 0.1
+    dropout: 0.32
     max_seq_length: 5000
 optimizer:
   _target_: torch.optim.AdamW
@@ -22,7 +23,7 @@ lr_scheduler:
   _partial_: true
   patience: 3
   verbose: true
-  factor: 0.32
+  factor: 0.1
   mode: min
   min_lr: 1e-6
 num_epochs: 100

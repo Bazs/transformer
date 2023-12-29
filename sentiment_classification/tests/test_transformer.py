@@ -1,6 +1,6 @@
 import torch
 
-from sentiment_classification.dataset import Params, create_dataloaders
+from sentiment_classification.data.dataset import Params, create_dataloaders
 from sentiment_classification.models.text_transformer import (
     TransformerForClassification,
     TransformerParams,
@@ -27,6 +27,6 @@ def test_forward():
     )
 
     for texts, masks, labels in datasets.train_loader:
-        logits = model(texts, mask=masks)
+        logits, _ = model(texts, mask=masks)
         assert logits.shape == (batch_size, 2)
         break

@@ -4,6 +4,7 @@ import math
 import cattr
 import torch
 import torch.nn as nn
+import torchtext
 from attr import define
 
 
@@ -35,12 +36,13 @@ class TransformerForClassification(nn.Module):
         self.fc_out = nn.Linear(params.emb_dim, params.output_dim)
         self.dropout = nn.Dropout(params.dropout)
 
-    def forward(self, text: torch.Tensor, mask: None | torch.Tensor = None) -> torch.Tensor:
+    def forward(self, text: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return the logits and the attention scores from the last transformer encoder layer."""
         embedded = self.embedding(text)
         embedded = self.pos_encoder(embedded)
-        transformed = self.transformer_encoder(embedded, mask=mask)
+        transformed, final_attention = self.transformer_encoder(embedded, mask=mask)
         cls_output = transformed[:, 0, :]  # Get the output corresponding to the classification token
-        return self.fc_out(self.dropout(cls_output))
+        return self.fc_out(self.dropout(cls_output)), final_attention
 
 
 class TransformerEncoder(nn.Module):
@@ -48,10 +50,13 @@ class TransformerEncoder(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList([copy.deepcopy(layer) for _ in range(n_layers)])
 
-    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None):
-        for layer in self.layers:
-            src = layer(src, mask=mask)
-        return src
+    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return the updated queries and attention scores from the last layer."""
+        for layer_index, layer in enumerate(self.layers):
+            src, attention = layer(src, mask=mask)
+            if layer_index == len(self.layers) - 1:
+                output_attention = attention
+        return src, output_attention
 
 
 class TransformerEncoderLayer(nn.Module):
@@ -64,18 +69,19 @@ class TransformerEncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(emb_dim)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> torch.Tensor:
+    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return the updated queries and attention scores."""
         # Self-attention
         _src = self.norm1(src)
-        attn = self.self_attn(_src, _src, _src, mask=mask)
-        src = src + self.dropout(attn)
+        updated_queries, attention = self.self_attn(_src, _src, _src, mask=mask)
+        src = src + self.dropout(updated_queries)
 
         # Feedforward
         _src = self.norm2(src)
         ff = self.positionwise_feedforward(_src)
         src = src + self.dropout(ff)
 
-        return src
+        return src, attention
 
 
 class MultiHeadAttention(nn.Module):
@@ -100,7 +106,11 @@ class MultiHeadAttention(nn.Module):
         key: torch.Tensor,
         value: torch.Tensor,
         mask: None | torch.Tensor = None,
-    ) -> torch.Tensor:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Compute multi-head attention, return the updated queries and attention scores.
+
+        The attention will have the shape of [batch_size, n_heads, seq_len, seq_len].
+        """
         batch_size = query.shape[0]
 
         # Linear transformations and split into n_heads, dims are [b x seq_len x n_heads x head_dim]
@@ -132,7 +142,7 @@ class MultiHeadAttention(nn.Module):
         # Transpose and reshape to [b x seq_len x emb_size]
         x = x.transpose(1, 2).contiguous().view(batch_size, -1, self.emb_dim)
 
-        return self.fc_out(x)
+        return self.fc_out(x), attention
 
 
 class PositionwiseFeedforward(nn.Module):
