@@ -1,0 +1,10 @@
+---
+dataset_factory:
+  _target_: image_classification.data.dataset.create_train_val_datasets
+  config:
+    root_dir:
+      _target_: pathlib.Path
+      _args_:
+        - ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs
+    train_val_ratio: 0.8
+    train_transform: null
