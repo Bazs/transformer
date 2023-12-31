@@ -1,5 +1,3 @@
-import torch
-
 from sentiment_classification.data.dataset import Params, create_dataloaders
 from sentiment_classification.models.text_transformer import (
     TransformerForClassification,
