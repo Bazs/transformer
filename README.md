@@ -1,4 +1,4 @@
-Hand-implmeneted Transformer-based ML models.
+Hand-implemented Transformer-based ML models.
 
 ## Sentiment classification
 
