@@ -22,7 +22,7 @@ def test_forward():
             n_layers=2,
             output_dim=2,
             dropout=0.1,
-            max_seq_length=100,
+            max_seq_length=1000,
         ),
     )
 
