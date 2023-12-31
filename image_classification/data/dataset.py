@@ -5,6 +5,7 @@ from typing import Callable, Optional
 from attr import define
 from PIL import Image
 from torch.utils.data import Dataset
+from torchvision import transforms
 
 _logger = logging.getLogger(Path(__file__).stem)
 
@@ -26,6 +27,7 @@ class CatsVsDogsDataset(Dataset):
             raise ValueError("Not all files are cats or dogs, please check the file names")
         _logger.info(f"{self.__class__.__name__} with {num_cats} cats and {num_dogs} dogs")
 
+        self.to_tensor = transforms.ToTensor()
         self.transform = transform
 
     def __len__(self):
@@ -36,10 +38,11 @@ class CatsVsDogsDataset(Dataset):
             raise IndexError(f"Index {idx} out of range")
 
         image = Image.open(self.file_list[idx])
-        label = 0 if "cat" in self.image_files[idx] else 1
+        image_tensor = self.to_tensor(image)
+        label = 0 if "cat" in str(self.file_list[idx]) else 1
         if self.transform:
-            image = self.transform(image)
-        return image, label
+            image_tensor = self.transform(image_tensor)
+        return image_tensor, label
 
 
 def create_train_val_datasets(config: Config) -> tuple[CatsVsDogsDataset, CatsVsDogsDataset]:

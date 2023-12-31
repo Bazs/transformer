@@ -21,6 +21,9 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     train_loader, val_loader = hydra.utils.instantiate(config.dataset_factory)
 
+    sample = next(iter(train_loader))
+    print(sample)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
