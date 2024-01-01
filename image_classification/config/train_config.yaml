@@ -7,4 +7,24 @@ dataset_factory:
       _args_:
         - ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs
     train_val_ratio: 0.8
-    train_transform: null
+    train_transform:
+      _target_: torchvision.transforms.Compose
+      transforms:
+        - _target_: torchvision.transforms.Resize
+          size: [288, 288]
+        - _target_: torchvision.transforms.ToTensor
+        - _target_: torchvision.transforms.Normalize
+          mean: [0.4569, 0.4536, 0.4533]
+          std: [0.2725, 0.2710, 0.2702]
+model:
+  _target_: image_classification.models.vision_transformer.VisionTransformer
+  params:
+    image_width: 288
+    image_height: 288
+    patch_size: 32
+    emb_dim: 1024
+    n_heads: 16
+    hid_dim: 2048
+    n_layers: 8
+    output_dim: 2
+    dropout: 0.1

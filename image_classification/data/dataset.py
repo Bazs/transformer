@@ -38,11 +38,10 @@ class CatsVsDogsDataset(Dataset):
             raise IndexError(f"Index {idx} out of range")
 
         image = Image.open(self.file_list[idx])
-        image_tensor = self.to_tensor(image)
         label = 0 if "cat" in str(self.file_list[idx]) else 1
         if self.transform:
-            image_tensor = self.transform(image_tensor)
-        return image_tensor, label
+            image = self.transform(image)
+        return image, label
 
 
 def create_train_val_datasets(config: Config) -> tuple[CatsVsDogsDataset, CatsVsDogsDataset]:
