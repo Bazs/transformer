@@ -15,6 +15,9 @@ class Config:
     root_dir: Path  # The root directory which contains the train and test directories. Those directories contain the images.
     train_val_ratio: float
     train_transform: Optional[Callable]
+    val_transform: Optional[Callable]
+
+    tiny_dataset: bool = False  # If true, only use 5% of the data.
 
 
 class CatsVsDogsDataset(Dataset):
@@ -41,6 +44,9 @@ class CatsVsDogsDataset(Dataset):
         label = 0 if "cat" in str(self.file_list[idx]) else 1
         if self.transform:
             image = self.transform(image)
+        else:
+            # If no transform is provided, convert to tensor
+            image = self.to_tensor(image)
         return image, label
 
 
@@ -48,6 +54,11 @@ def create_train_val_datasets(config: Config) -> tuple[CatsVsDogsDataset, CatsVs
     train_dir = config.root_dir / "train"
     dog_files = sorted(list(train_dir.glob("dog*.jpg")))
     cat_files = sorted(list(train_dir.glob("cat*.jpg")))
+
+    if config.tiny_dataset:
+        tiny_dataset_ratio = 0.05
+        dog_files = dog_files[: int(len(dog_files) * tiny_dataset_ratio)]
+        cat_files = cat_files[: int(len(cat_files) * tiny_dataset_ratio)]
 
     train_files = (
         dog_files[: int(len(dog_files) * config.train_val_ratio)]
@@ -60,5 +71,5 @@ def create_train_val_datasets(config: Config) -> tuple[CatsVsDogsDataset, CatsVs
 
     return (
         CatsVsDogsDataset(train_files, config.train_transform),
-        CatsVsDogsDataset(val_files),
+        CatsVsDogsDataset(val_files, config.val_transform),
     )

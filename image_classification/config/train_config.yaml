@@ -16,8 +16,19 @@ dataset_factory:
         - _target_: torchvision.transforms.Normalize
           mean: [0.4569, 0.4536, 0.4533]
           std: [0.2725, 0.2710, 0.2702]
+    val_transform:
+      _target_: torchvision.transforms.Compose
+      transforms:
+        - _target_: torchvision.transforms.Resize
+          size: [288, 288]
+        - _target_: torchvision.transforms.ToTensor
+        - _target_: torchvision.transforms.Normalize
+          mean: [0.4569, 0.4536, 0.4533]
+          std: [0.2725, 0.2710, 0.2702]
+    tiny_dataset: true
 model:
   _target_: image_classification.models.vision_transformer.VisionTransformer
+  _partial_: true
   params:
     image_width: 288
     image_height: 288
@@ -26,5 +37,33 @@ model:
     n_heads: 16
     hid_dim: 2048
     n_layers: 8
-    output_dim: 2
+    output_dim: 1
     dropout: 0.1
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00005
+lr_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  patience: 3
+  verbose: true
+  factor: 0.1
+  mode: min
+  min_lr: 1e-6
+batch_size: 2
+num_epochs: 100
+num_dataloader_workers: 4
+output_dir: ${oc.env:DATADIR}/image_classification/training_runs
+lightning_callbacks:
+  - _target_: lightning.pytorch.callbacks.ModelCheckpoint
+    monitor: val_accuracy
+    mode: max
+    save_top_k: 3
+    filename: '{epoch}-{val_accuracy:.2f}'
+  - _target_: lightning.pytorch.callbacks.early_stopping.EarlyStopping
+    monitor: val_loss
+    patience: 10
+    mode: min
+    verbose: true
+wandb_enabled: false

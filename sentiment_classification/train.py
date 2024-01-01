@@ -21,6 +21,7 @@ from sentiment_classification.models.text_transformer_lightning import (
     VAL_LOSS_KEY,
     TransformerLightningModule,
 )
+from utils.runs import create_timestamped_run_name
 
 WANDB_PROJECT_NAME = "sentiment-classification-transformer"
 
@@ -46,7 +47,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     config = cattrs.structure(config_dict, Config)
 
-    run_name = _create_timestamped_run_name()
+    run_name = create_timestamped_run_name()
     output_dir = config.output_dir / run_name
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -88,10 +89,6 @@ def main(config_dict: dict | omegaconf.DictConfig):
     )
     trainer.fit(lightning_module, dataset_and_loaders.train_loader, dataset_and_loaders.val_loader)
     wandb.log({"best_model_path": str(checkpoint_callback.best_model_path)})
-
-
-def _create_timestamped_run_name() -> str:
-    return datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
 if __name__ == "__main__":
