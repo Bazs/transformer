@@ -1,4 +1,9 @@
 ---
+defaults:
+  - _self_
+  - transforms/train_transform@dataset_factory.config.train_transform
+  - transforms/test_transform@dataset_factory.config.val_transform
+
 dataset_factory:
   _target_: image_classification.data.dataset.create_train_val_datasets
   config:
@@ -7,32 +12,14 @@ dataset_factory:
       _args_:
         - ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs
     train_val_ratio: 0.8
-    train_transform:
-      _target_: torchvision.transforms.Compose
-      transforms:
-        - _target_: torchvision.transforms.Resize
-          size: [288, 288]
-        - _target_: torchvision.transforms.ToTensor
-        - _target_: torchvision.transforms.Normalize
-          mean: [0.4569, 0.4536, 0.4533]
-          std: [0.2725, 0.2710, 0.2702]
-    val_transform:
-      _target_: torchvision.transforms.Compose
-      transforms:
-        - _target_: torchvision.transforms.Resize
-          size: [288, 288]
-        - _target_: torchvision.transforms.ToTensor
-        - _target_: torchvision.transforms.Normalize
-          mean: [0.4569, 0.4536, 0.4533]
-          std: [0.2725, 0.2710, 0.2702]
-    tiny_dataset: true
+    tiny_dataset: false
 model:
   _target_: image_classification.models.vision_transformer.VisionTransformer
   _partial_: true
   params:
     image_width: 288
     image_height: 288
-    patch_size: 32
+    patch_size: 16
     emb_dim: 1024
     n_heads: 16
     hid_dim: 2048
@@ -42,11 +29,11 @@ model:
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 0.00005
+  lr: 0.00001
 lr_scheduler:
   _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
   _partial_: true
-  patience: 3
+  patience: 20
   verbose: true
   factor: 0.1
   mode: min
@@ -63,7 +50,7 @@ lightning_callbacks:
     filename: '{epoch}-{val_accuracy:.2f}'
   - _target_: lightning.pytorch.callbacks.early_stopping.EarlyStopping
     monitor: val_loss
-    patience: 10
+    patience: 40
     mode: min
     verbose: true
-wandb_enabled: false
+wandb_enabled: true

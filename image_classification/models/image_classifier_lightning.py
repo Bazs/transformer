@@ -39,6 +39,7 @@ class ImageClassifierLightning(L.LightningModule):
             },
             on_step=False,
             on_epoch=True,
+            prog_bar=True,
         )
 
         return loss
@@ -59,9 +60,17 @@ class ImageClassifierLightning(L.LightningModule):
             },
             on_step=False,
             on_epoch=True,
+            prog_bar=True,
         )
 
         return loss
+
+    def predict_step(self, batch: tuple, batch_idx: int) -> tuple[torch.Tensor, torch.Tensor]:
+        image_batch, _ = batch
+        logits, attention = self.model(image_batch)
+        logits = logits.squeeze(1)
+        pred_probs = torch.sigmoid(logits)
+        return pred_probs, attention
 
     def configure_optimizers(self):
         optimizer = self.optimizer_factory(self.parameters())

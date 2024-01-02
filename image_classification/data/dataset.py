@@ -41,7 +41,7 @@ class CatsVsDogsDataset(Dataset):
             raise IndexError(f"Index {idx} out of range")
 
         image = Image.open(self.file_list[idx])
-        label = 0 if "cat" in str(self.file_list[idx]) else 1
+        label = 0 if "cat" in str(self.file_list[idx].stem) else 1
         if self.transform:
             image = self.transform(image)
         else:

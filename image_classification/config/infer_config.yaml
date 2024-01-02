@@ -1,0 +1,8 @@
+---
+defaults:
+  - _self_
+  - transforms/test_transform@data_transform
+
+checkpoint_path: ${oc.env:DATADIR}/image_classification/training_runs/2024-01-02_10-29-20/image-classification-transformer/y7v5ti1b/checkpoints/epoch=7-val_accuracy=0.82.ckpt
+input_image_path: ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs/custom_test/custom_test/cat_2.png
+attention_viz_outfile_path: null
