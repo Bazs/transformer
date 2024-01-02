@@ -14,7 +14,7 @@ class TransformerEncoder(nn.Module):
         """Return the updated queries and attention scores from the second layer."""
         for layer_index, layer in enumerate(self.layers):
             src, attention = layer(src, mask=mask)
-            if layer_index == 2:
+            if layer_index == 1:
                 output_attention = attention
         return src, output_attention
 

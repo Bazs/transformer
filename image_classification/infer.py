@@ -105,7 +105,7 @@ def _plot_attention_per_head_save(
         plt.imshow(heatmap, cmap="jet", alpha=1.0)
         plt.axis("off")
 
-        plt.savefig(f"{output_filepath_prefix}_head_{head_idx}png", bbox_inches="tight")
+        plt.savefig(f"{output_filepath_prefix}_head_{head_idx}.png", bbox_inches="tight")
 
         plt.show()
 
