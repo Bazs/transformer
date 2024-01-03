@@ -56,17 +56,19 @@ def main(config_dict: dict | omegaconf.DictConfig):
 
     model_factory_dict = config.model
     model_factory_dict["_partial_"] = True
+    model_factory = hydra.utils.instantiate(model_factory_dict)
+    optimizer_factory = hydra.utils.instantiate(config.optimizer)
+    lr_scheduler_factory = hydra.utils.instantiate(config.lr_scheduler)
 
     lightning_module = ImageClassifierLightning(
-        model_factory=hydra.utils.instantiate(model_factory_dict),
-        optimizer_factory=hydra.utils.instantiate(config.optimizer),
-        lr_scheduler_factory=hydra.utils.instantiate(config.lr_scheduler),
+        model_factory=model_factory, optimizer_factory=optimizer_factory, lr_scheduler_factory=lr_scheduler_factory
     )
+
+    torch.set_float32_matmul_precision("medium")
 
     if config.wandb_enabled:
         wandb_logger = WandbLogger(project=_WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
         wandb_logger.experiment.config.update(cattrs.unstructure(config))
-        wandb_logger.watch(lightning_module.model)
         lightning_logger = wandb_logger
     else:
         wandb.init(mode="disabled")

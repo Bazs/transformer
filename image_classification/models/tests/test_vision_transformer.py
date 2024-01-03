@@ -42,6 +42,7 @@ def test_vision_transformer():
         params=TransformerParams(
             image_width=32,
             image_height=32,
+            image_channels=3,
             patch_size=4,
             emb_dim=32,
             n_heads=4,
