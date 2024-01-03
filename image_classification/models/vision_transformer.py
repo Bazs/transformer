@@ -14,6 +14,7 @@ from models.transformer import (
 class TransformerParams:
     image_width: int
     image_height: int
+    image_channels: int
     patch_size: int
     emb_dim: int
     n_heads: int
@@ -43,7 +44,9 @@ class VisionTransformer(nn.Module):
 
         self.num_patches = params.image_width // params.patch_size * params.image_height // params.patch_size
         self.class_embedding = nn.Parameter(torch.zeros(1, 1, params.emb_dim))
-        self.patch_to_embedding = nn.Linear(params.patch_size * params.patch_size * 3, params.emb_dim)
+        self.patch_to_embedding = nn.Linear(
+            params.patch_size * params.patch_size * params.image_channels, params.emb_dim
+        )
         self.pos_encoder = PositionalEncoding(
             embedding_dimension=params.emb_dim,
             dropout_probability=params.dropout,

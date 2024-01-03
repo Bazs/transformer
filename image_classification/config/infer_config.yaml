@@ -3,6 +3,6 @@ defaults:
   - _self_
   - transforms/test_transform@data_transform
 
-checkpoint_path: ${oc.env:DATADIR}/image_classification/training_runs/2024-01-02_10-29-20/image-classification-transformer/y7v5ti1b/checkpoints/epoch=7-val_accuracy=0.82.ckpt
+checkpoint_path: ${oc.env:DATADIR}/image_classification/training_runs/2024-01-03_12-53-23/image-classification-transformer/sdukwhnm/checkpoints/epoch=20-val_accuracy=0.81.ckpt
 input_image_path: ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs/train/cat.12496.jpg
 attention_viz_outdir: ${oc.env:DATADIR}/image_classification/datasets/cats_vs_dogs/custom_test/results/

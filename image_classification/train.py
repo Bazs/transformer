@@ -54,8 +54,11 @@ def main(config_dict: dict | omegaconf.DictConfig):
         val_dataset, batch_size=config.batch_size, num_workers=config.num_dataloader_workers, shuffle=False
     )
 
+    model_factory_dict = config.model
+    model_factory_dict["_partial_"] = True
+
     lightning_module = ImageClassifierLightning(
-        model_factory=hydra.utils.instantiate(config.model),
+        model_factory=hydra.utils.instantiate(model_factory_dict),
         optimizer_factory=hydra.utils.instantiate(config.optimizer),
         lr_scheduler_factory=hydra.utils.instantiate(config.lr_scheduler),
     )

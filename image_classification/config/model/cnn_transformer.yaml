@@ -1,0 +1,25 @@
+---
+_target_: image_classification.models.cnn_transformer.CnnTransformer
+cnn_backbone:
+  _target_: image_classification.models.cnn_backbone.CnnBackbone
+  params:
+    activation:
+      _target_: torch.nn.GELU
+      approximate: tanh
+    in_channels: 3
+    out_channels: 256
+    kernel_size: 4
+    stride: 4
+transformer_encoder:
+  _target_: image_classification.models.vision_transformer.VisionTransformer
+  params:
+    image_width: 72
+    image_height: 72
+    image_channels: 256
+    patch_size: 4
+    emb_dim: 1024
+    n_heads: 16
+    hid_dim: 2048
+    n_layers: 8
+    output_dim: 1
+    dropout: 0.1

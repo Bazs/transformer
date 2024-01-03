@@ -111,9 +111,10 @@ class PositionwiseFeedforward(nn.Module):
         self.fc1 = nn.Linear(emb_dim, hid_dim)
         self.fc2 = nn.Linear(hid_dim, emb_dim)
         self.dropout = nn.Dropout(dropout)
+        self.activation = nn.GELU(approximate="tanh")
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = torch.relu(self.fc1(x))
+        x = self.activation(self.fc1(x))
         x = self.dropout(x)
         x = self.fc2(x)
         return x

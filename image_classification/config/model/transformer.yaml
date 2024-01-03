@@ -1,0 +1,11 @@
+_target_: image_classification.models.vision_transformer.VisionTransformer
+params:
+  image_width: 288
+  image_height: 288
+  patch_size: 16
+  emb_dim: 1024
+  n_heads: 16
+  hid_dim: 2048
+  n_layers: 8
+  output_dim: 1
+  dropout: 0.1
