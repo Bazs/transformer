@@ -1,7 +1,7 @@
 ---
 defaults:
   - _self_
-  - model/cnn_transformer
+  - model/resnet
   - transforms/train_transform@dataset_factory.config.train_transform
   - transforms/test_transform@dataset_factory.config.val_transform
 
