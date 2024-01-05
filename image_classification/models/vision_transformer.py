@@ -47,12 +47,17 @@ class VisionTransformer(nn.Module):
         self.patch_to_embedding = nn.Linear(
             params.patch_size * params.patch_size * params.image_channels, params.emb_dim
         )
-        self.pos_encoder = PositionalEncoding(
-            embedding_dimension=params.emb_dim,
-            dropout_probability=params.dropout,
-            max_sequence_len=self.num_patches + 1,  # + 1 for the class embedding
+        encoder_layer = TransformerEncoderLayer(
+            params.emb_dim,
+            params.n_heads,
+            params.hid_dim,
+            params.dropout,
+            pos_encoding=PositionalEncoding(
+                embedding_dimension=params.emb_dim,
+                dropout_probability=params.dropout,
+                max_sequence_len=self.num_patches + 1,  # + 1 for the class embedding
+            ),
         )
-        encoder_layer = TransformerEncoderLayer(params.emb_dim, params.n_heads, params.hid_dim, params.dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layer, params.n_layers)
         self.fc_out = nn.Linear(params.emb_dim, params.output_dim)
         self.dropout = nn.Dropout(params.dropout)
@@ -69,7 +74,6 @@ class VisionTransformer(nn.Module):
         patch_batch = self.patch_to_embedding(patch_batch)
         # Prepend the class embedding to each batch.
         patch_batch = torch.cat([self.class_embedding.expand(patch_batch.shape[0], 1, -1), patch_batch], dim=1)
-        patch_batch = self.pos_encoder(patch_batch)
         transformed_batch, attention = self.transformer_encoder(patch_batch)
         cls_output = transformed_batch[:, 0, :]  # Get the output corresponding to the classification token
         return self.fc_out(self.dropout(cls_output)), attention

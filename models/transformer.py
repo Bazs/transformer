@@ -20,7 +20,7 @@ class TransformerEncoder(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    def __init__(self, emb_dim: int, n_heads: int, hid_dim: int, dropout: float):
+    def __init__(self, emb_dim: int, n_heads: int, hid_dim: int, dropout: float, pos_encoding: nn.Module | None = None):
         super().__init__()
         self.self_attn = MultiHeadAttention(emb_dim, n_heads)
         self.positionwise_feedforward = PositionwiseFeedforward(emb_dim, hid_dim, dropout)
@@ -29,11 +29,17 @@ class TransformerEncoderLayer(nn.Module):
         self.norm2 = nn.LayerNorm(emb_dim)
         self.dropout = nn.Dropout(dropout)
 
+        self.pos_encoding = pos_encoding
+
     def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
         """Return the updated queries and attention scores."""
         # Self-attention
         _src = self.norm1(src)
-        updated_queries, attention = self.self_attn(_src, _src, _src, mask=mask)
+        if self.pos_encoding is not None:
+            query = key = self.pos_encoding(_src)
+        else:
+            query = key = _src
+        updated_queries, attention = self.self_attn(query=query, key=key, value=_src, mask=mask)
         src = src + self.dropout(updated_queries)
 
         # Feedforward
