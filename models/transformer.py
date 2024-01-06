@@ -27,25 +27,26 @@ class TransformerEncoderLayer(nn.Module):
 
         self.norm1 = nn.LayerNorm(emb_dim)
         self.norm2 = nn.LayerNorm(emb_dim)
-        self.dropout = nn.Dropout(dropout)
+        self.dropout1 = nn.Dropout(dropout)
+        self.dropout2 = nn.Dropout(dropout)
 
         self.pos_encoding = pos_encoding
 
     def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
         """Return the updated queries and attention scores."""
         # Self-attention
-        _src = self.norm1(src)
         if self.pos_encoding is not None:
-            query = key = self.pos_encoding(_src)
+            query = key = self.pos_encoding(src)
         else:
-            query = key = _src
-        updated_queries, attention = self.self_attn(query=query, key=key, value=_src, mask=mask)
-        src = src + self.dropout(updated_queries)
+            query = key = src
+        updated_queries, attention = self.self_attn(query=query, key=key, value=src, mask=mask)
+        src = src + self.dropout1(updated_queries)
+        src = self.norm1(src)
 
         # Feedforward
-        _src = self.norm2(src)
-        ff = self.positionwise_feedforward(_src)
-        src = src + self.dropout(ff)
+        ff = self.positionwise_feedforward(src)
+        src = src + self.dropout2(ff)
+        src = self.norm2(src)
 
         return src, attention
 

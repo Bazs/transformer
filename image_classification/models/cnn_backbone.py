@@ -27,8 +27,10 @@ class CnnBackbone(nn.Module):
             kernel_size=params.kernel_size,
             stride=params.stride,
         )
+        self.norm = nn.BatchNorm2d(params.out_channels)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
+        x = self.norm(x)
         x = self.activation(x)
         return x

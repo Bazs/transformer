@@ -20,6 +20,6 @@ transformer_encoder:
     emb_dim: 1024
     n_heads: 16
     hid_dim: 2048
-    n_layers: 8
+    n_layers: 6
     output_dim: 1
     dropout: 0.1

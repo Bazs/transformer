@@ -54,7 +54,7 @@ class VisionTransformer(nn.Module):
             params.dropout,
             pos_encoding=PositionalEncoding(
                 embedding_dimension=params.emb_dim,
-                dropout_probability=params.dropout,
+                dropout_probability=0,
                 max_sequence_len=self.num_patches + 1,  # + 1 for the class embedding
             ),
         )
