@@ -34,7 +34,7 @@ lightning_callbacks:
   - _target_: lightning.pytorch.callbacks.ModelCheckpoint
     monitor: val_accuracy
     mode: max
-    save_top_k: 3
+    save_top_k: 10
     filename: '{epoch}-{val_accuracy:.2f}'
   - _target_: lightning.pytorch.callbacks.early_stopping.EarlyStopping
     monitor: val_loss
