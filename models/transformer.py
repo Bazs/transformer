@@ -10,13 +10,14 @@ class TransformerEncoder(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList([copy.deepcopy(layer) for _ in range(n_layers)])
 
-    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return the updated queries and attention scores from the second layer."""
+    def forward(self, src: torch.Tensor, mask: None | torch.Tensor = None) -> tuple[torch.Tensor, list[torch.Tensor]]:
+        """Return the updated queries and attention scores from all layers, in the shape of
+        [num_heads, seq_len, seq_len] per layer."""
+        attention_per_layer = []
         for layer_index, layer in enumerate(self.layers):
             src, attention = layer(src, mask=mask)
-            if layer_index == 1:
-                output_attention = attention
-        return src, output_attention
+            attention_per_layer.append(attention)
+        return src, attention_per_layer
 
 
 class TransformerEncoderLayer(nn.Module):

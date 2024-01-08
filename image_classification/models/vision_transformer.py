@@ -64,7 +64,7 @@ class VisionTransformer(nn.Module):
 
         self._init_weights()
 
-    def forward(self, image_batch: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, image_batch: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """Return the logits and the attention scores from the last transformer encoder layer."""
 
         if 4 != len(image_batch.shape):
@@ -74,9 +74,9 @@ class VisionTransformer(nn.Module):
         patch_batch = self.patch_to_embedding(patch_batch)
         # Prepend the class embedding to each batch.
         patch_batch = torch.cat([self.class_embedding.expand(patch_batch.shape[0], 1, -1), patch_batch], dim=1)
-        transformed_batch, attention = self.transformer_encoder(patch_batch)
+        transformed_batch, attention_per_layer = self.transformer_encoder(patch_batch)
         cls_output = transformed_batch[:, 0, :]  # Get the output corresponding to the classification token
-        return self.fc_out(self.dropout(cls_output)), attention
+        return self.fc_out(self.dropout(cls_output)), attention_per_layer
 
     def _init_weights(self):
         """Initialize the weights."""

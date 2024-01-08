@@ -11,7 +11,7 @@ class CnnTransformer(nn.Module):
         self.cnn_backbone = cnn_backbone
         self.transformer_encoder = transformer_encoder
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, list[torch.Tensor]]:
         x = self.cnn_backbone(x)
         x, attention = self.transformer_encoder(x)
         return x, attention

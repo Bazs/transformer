@@ -48,14 +48,14 @@ def main(config_dict: dict | omegaconf.DictConfig):
     results = trainer.predict(lightning_module, loader)
     assert len(results) == 1
     result = results[0]
-    classification_score, attention = result
+    classification_score, attention_per_layer = result
 
     print(f"Predicted class: {classification_score.item():.2f}")
     if config.attention_viz_outdir is not None:
         _plot_attention_per_head_save(
             original_image=Image.open(config.input_image_path),
             model_input_image=dataset[0][0],
-            attention_scores=attention,
+            attention_scores=attention_per_layer[0],
             output_filepath_prefix=config.attention_viz_outdir / f"{config.input_image_path.stem}_attention",
         )
 

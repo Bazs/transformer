@@ -40,13 +40,13 @@ def main(config_dict: dict | omegaconf.DictConfig):
     results = trainer.predict(lightning_module, loader)
     assert len(results) == 1
     result = results[0]
-    sentiment_score, attention = result
+    sentiment_score, attention_per_layer = result
 
     print(f"Predicted sentiment: {sentiment_score:.2f}")
     inverse_vocab = lightning_module.vocab.get_itos()
     input_tokens = [inverse_vocab[token_id] for token_id in input_tensor]
     if config.attention_viz_outfile_path is not None:
-        _plot_attention_per_head_save(input_tokens, attention, config.attention_viz_outfile_path)
+        _plot_attention_per_head_save(input_tokens, attention_per_layer[0], config.attention_viz_outfile_path)
 
 
 def _plot_attention_per_head_save(tokens: list[str], attention_scores: torch.Tensor, output_filepath: Path):
