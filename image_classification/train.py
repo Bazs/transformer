@@ -16,9 +16,8 @@ from image_classification.models.image_classifier_lightning import (
     ImageClassifierLightning,
 )
 from image_classification.models.vision_transformer import VisionTransformer
+from image_classification.names import WANDB_PROJECT_NAME
 from utils.runs import create_timestamped_run_name
-
-_WANDB_PROJECT_NAME = "image-classification-transformer"
 
 
 @define
@@ -67,7 +66,7 @@ def main(config_dict: dict | omegaconf.DictConfig):
     torch.set_float32_matmul_precision("medium")
 
     if config.wandb_enabled:
-        wandb_logger = WandbLogger(project=_WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
+        wandb_logger = WandbLogger(project=WANDB_PROJECT_NAME, name=run_name, save_dir=output_dir)
         wandb_logger.experiment.config.update(cattrs.unstructure(config))
         lightning_logger = wandb_logger
     else:
