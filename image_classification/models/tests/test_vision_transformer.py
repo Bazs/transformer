@@ -1,9 +1,9 @@
 import torch
 
+from image_classification.models.patchify import patchify
 from image_classification.models.vision_transformer import (
     TransformerParams,
     VisionTransformer,
-    patchify,
 )
 
 
